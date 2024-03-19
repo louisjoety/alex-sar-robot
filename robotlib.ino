@@ -1,13 +1,4 @@
 #include <AFMotor.h>
-// Direction values
-typedef enum dir
-{
-  STOP,
-  GO,
-  BACK,
-  CCW,
-  CW
-} dir;
 
 // Motor control
 #define FRONT_LEFT   1 // M4 on the driver shield
@@ -65,25 +56,51 @@ void move(float speed, int direction)
 
 void forward(float dist, float speed)
 {
+  if(dist > 0)
+  {
+    deltaDist = dist;
+  }
+  else
+  {
+    deltaDist=9999999;
+  }
+  
+  newDist = forwardDist + deltaDist;
+  
+  dir = (TDirection) FORWARD;
   move(speed, FORWARD);
 }
 
 void backward(float dist, float speed)
 {
+  if(dist > 0)
+  {
+    deltaDist = dist;
+  }
+  else
+  {
+    deltaDist=9999999;
+  }
+  
+  newDist = reverseDist + deltaDist;
+  dir = (TDirection) BACKWARD;
   move(speed, BACKWARD);
 }
 
 void ccw(float dist, float speed)
-{
+{ 
+  dir = (TDirection) LEFT;
   move(speed, CCW);
 }
 
 void cw(float dist, float speed)
 {
+  dir = (TDirection) RIGHT;
   move(speed, CW);
 }
 
 void stop()
 {
+  dir = (TDirection) STOP;
   move(0, STOP);
 }
