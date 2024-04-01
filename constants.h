@@ -40,7 +40,8 @@ typedef enum
   COMMAND_TURN_RIGHT = 3,
   COMMAND_STOP = 4,
   COMMAND_GET_STATS = 5,
-  COMMAND_CLEAR_STATS = 6
+  COMMAND_CLEAR_STATS = 6,
+  COMMAND_GET_COLOUR = 7
 } TCommandType;
 
 typedef enum
@@ -60,5 +61,13 @@ typedef enum Tdir
   CCW,
   CW
 } Tdir;
+
+// Colour filters
+typedef enum Tfilter
+{
+  RED,
+  GREEN,
+  BLUE
+} Tfilter;
 
 #endif

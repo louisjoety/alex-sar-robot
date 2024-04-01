@@ -31,8 +31,10 @@ float alexCirc = 0.0;
 
 #define WHEEL_CIRC          20
 
+#define SPEED_OF_SOUND 0.0345
+
 /*
-      Alex's State Variables
+   Alex's State Variables
 */
 
 // Store the ticks from Alex's left and
@@ -64,6 +66,12 @@ unsigned long newDist;
 unsigned long deltaTicks;
 unsigned long targetTicks;
 
+// Variables to store precalibrated colour values
+unsigned long red[3] = {60, 130, 100};
+unsigned long green[3] = {140, 60, 130}; // To update
+unsigned long black[3] = {336, 338, 271}; // To update
+unsigned long white[3] = {96, 78, 63};
+
 unsigned long computeDeltaTicks(float ang)
 {
   unsigned long ticks = (unsigned long)((ang * alexCirc * COUNTS_PER_REV) / (360.0 * WHEEL_CIRC));
@@ -91,7 +99,79 @@ void right(float ang, float speed)
   cw(ang, speed);
 }
 
+// Sets up colour sensor
+void setupColourSensor()
+{
+  DDRB |= 0b00001111;
+  DDRL = 0b00000001;
+  PORTL = 0;
+}
 
+// Reads input from colour sensor
+unsigned long readColour(Tfilter filter)
+{
+  switch (filter)
+  {
+    case RED:
+      PORTB |= 0b00000001;
+      break;
+
+    case GREEN:
+      PORTB |= 0b00001101;
+      break;
+
+    case BLUE:
+      PORTB |= 0b00001001;
+      break;
+  }
+
+  delayMicroseconds(100);
+
+  unsigned long out = 0;
+  for (int i = 0; i < 5; i++)
+  {
+    out += pulseIn(48, HIGH);
+  }
+
+  PORTB &= ~(0b00001111);
+
+  return (out / 5);
+}
+
+int isInRange(unsigned long *target, unsigned long *actual, unsigned long variance)
+{
+  for (int i = 0; i < 3; i++)
+  {
+    if (!((target - actual) < variance) || ((actual - target) < variance))
+    {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+// Sets up the ultrasonic sensor
+void setupUltrasonic()
+{
+  // Set Port A pin 1 (trig) to output, pin 0 (echo) to input
+  DDRA = 0b00000010;
+}
+
+// Uses the ultrasonic sensor to get the distance between the front of the robot and an obstacle
+double getDistance()
+{
+  // Sends out a 10us pulse from the ultrasonic
+  PORTA |= 0b00000010;
+  delayMicroseconds(10);
+  PORTA &= ~(0b00000010);
+
+  // Gets pulse and computes distance
+  unsigned long pulse = pulseIn(22, HIGH);
+  double out = (double)(pulse / 2) * SPEED_OF_SOUND;
+  dbprintf("%d", (int)(out));
+
+  return out;
+}
 /*
 
    Alex Communication Routines.
@@ -224,6 +304,42 @@ void sendResponse(TPacket *packet)
 
   len = serialize(buffer, packet, sizeof(TPacket));
   writeSerial(buffer, len);
+}
+
+void sendColour()
+{
+  PORTL = 1;
+  unsigned long readings[3];
+  readings[0] = readColour(RED);
+  readings[1] = readColour(GREEN);
+  readings[2] = readColour(BLUE);
+  dbprintf("%lu", readings[0]);
+  dbprintf("%lu", readings[1]);
+  dbprintf("%lu", readings[2]);
+
+  // Identifies colour
+  if (isInRange(red, readings, 10) == 1)
+  {
+    dbprintf("Red");
+  }
+  else if (isInRange(green, readings, 10) == 1)
+  {
+    dbprintf("Green");
+  }
+  else
+  {
+    long rgb[3];
+    rgb[0] = 255 - map((long)(readings[0]), (long)(white[0]), (long)(black[0]), 0, 255);
+    rgb[1] = 255 - map((long)(readings[1]), (long)(white[1]), (long)(black[1]), 0, 255);
+    rgb[2] = 255 - map((long)(readings[2]), (long)(white[2]), (long)(black[2]), 0, 255);
+    dbprintf("%l", rgb[0]);
+    dbprintf("%l", rgb[1]);
+    dbprintf("%l", rgb[2]);
+  }
+
+  // Shuts off colour sensor
+  PORTL = 0;
+  PORTB &= ~(0b00001111);
 }
 
 
@@ -407,7 +523,14 @@ void handleCommand(TPacket *command)
     // For movement commands, param[0] = distance, param[1] = speed.
     case COMMAND_FORWARD:
       sendOK();
-      forward((double) command->params[0], (float) command->params[1]);
+      if ((getDistance() - (double) command->params[0]) < 3.0)
+      {
+        dbprintf("Can't go any further forward");
+      }
+      else
+      {
+        forward((double) command->params[0], (float) command->params[1]);
+      }
       break;
 
     case COMMAND_REVERSE:
@@ -425,7 +548,6 @@ void handleCommand(TPacket *command)
       right((double) command->params[0], (float) command->params[1]);
       break;
 
-
     case COMMAND_STOP:
       sendOK();
       stop();
@@ -439,6 +561,11 @@ void handleCommand(TPacket *command)
     case COMMAND_CLEAR_STATS:
       sendOK();
       clearOneCounter(command -> params[0]);
+      break;
+
+    case COMMAND_GET_COLOUR:
+      sendOK();
+      sendColour();
       break;
 
     /*
@@ -499,6 +626,8 @@ void setup() {
   startSerial();
   enablePullups();
   initializeState();
+  setupColourSensor();
+  setupUltrasonic();
   sei();
 }
 
