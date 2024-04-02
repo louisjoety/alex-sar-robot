@@ -313,16 +313,16 @@ void sendColour()
   readings[0] = readColour(RED);
   readings[1] = readColour(GREEN);
   readings[2] = readColour(BLUE);
-  dbprintf("%lu", readings[0]);
-  dbprintf("%lu", readings[1]);
-  dbprintf("%lu", readings[2]);
+  dbprintf("%ld", readings[0]);
+  dbprintf("%ld", readings[1]);
+  dbprintf("%ld", readings[2]);
 
   // Identifies colour
-  if (isInRange(red, readings, 10) == 1)
+  if (isInRange(red, readings, 20) == 1)
   {
     dbprintf("Red");
   }
-  else if (isInRange(green, readings, 10) == 1)
+  else if (isInRange(green, readings, 20) == 1)
   {
     dbprintf("Green");
   }
@@ -332,9 +332,9 @@ void sendColour()
     rgb[0] = 255 - map((long)(readings[0]), (long)(white[0]), (long)(black[0]), 0, 255);
     rgb[1] = 255 - map((long)(readings[1]), (long)(white[1]), (long)(black[1]), 0, 255);
     rgb[2] = 255 - map((long)(readings[2]), (long)(white[2]), (long)(black[2]), 0, 255);
-    dbprintf("%l", rgb[0]);
-    dbprintf("%l", rgb[1]);
-    dbprintf("%l", rgb[2]);
+    dbprintf("%ld", rgb[0]);
+    dbprintf("%ld", rgb[1]);
+    dbprintf("%ld", rgb[2]);
   }
 
   // Shuts off colour sensor
