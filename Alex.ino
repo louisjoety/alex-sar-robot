@@ -66,12 +66,6 @@ unsigned long newDist;
 unsigned long deltaTicks;
 unsigned long targetTicks;
 
-// Variables to store precalibrated colour values
-unsigned long red[3] = {60, 130, 100};
-unsigned long green[3] = {140, 60, 130}; // To update
-unsigned long black[3] = {336, 338, 271}; // To update
-unsigned long white[3] = {96, 78, 63};
-
 unsigned long computeDeltaTicks(float ang)
 {
   unsigned long ticks = (unsigned long)((ang * alexCirc * COUNTS_PER_REV) / (360.0 * WHEEL_CIRC));
@@ -94,7 +88,7 @@ void right(float ang, float speed)
   if (ang == 0)
     deltaTicks = 99999999;
   else
-    deltaTicks = computeDeltaTicks(ang);
+  deltaTicks = computeDeltaTicks(ang);
   targetTicks = rightReverseTicksTurns + deltaTicks;
   cw(ang, speed);
 }
@@ -138,18 +132,6 @@ unsigned long readColour(Tfilter filter)
   return (out / 5);
 }
 
-int isInRange(unsigned long *target, unsigned long *actual, unsigned long variance)
-{
-  for (int i = 0; i < 3; i++)
-  {
-    if (!((target - actual) < variance) || ((actual - target) < variance))
-    {
-      return 0;
-    }
-  }
-  return 1;
-}
-
 // Sets up the ultrasonic sensor
 void setupUltrasonic()
 {
@@ -165,8 +147,10 @@ double getDistance()
   delayMicroseconds(10);
   PORTA &= ~(0b00000010);
 
-  // Gets pulse and computes distance
+  // Gets pulse duration
   unsigned long pulse = pulseIn(22, HIGH);
+
+  // Computes distance from pulse
   double out = (double)(pulse / 2) * SPEED_OF_SOUND;
   dbprintf("%d", (int)(out));
 
@@ -318,23 +302,27 @@ void sendColour()
   dbprintf("%ld", readings[2]);
 
   // Identifies colour
-  if (isInRange(red, readings, 20) == 1)
+  if ((readings[0] < 120 && readings[1] < 120) && readings[2] < 120)
   {
-    dbprintf("Red");
+    dbprintf("UK");
   }
-  else if (isInRange(green, readings, 20) == 1)
+  else if (readings[0] < readings[1] && readings[0] < readings[2])
   {
-    dbprintf("Green");
+    dbprintf("UC");
+    analogWrite(46, 200);
+    delay(200);
+    analogWrite(46, 100);
+    delay(200);
+    analogWrite(46, 0);
   }
-  else
+  else if (readings[1] < readings[0] && readings[1] < readings[2])
   {
-    long rgb[3];
-    rgb[0] = 255 - map((long)(readings[0]), (long)(white[0]), (long)(black[0]), 0, 255);
-    rgb[1] = 255 - map((long)(readings[1]), (long)(white[1]), (long)(black[1]), 0, 255);
-    rgb[2] = 255 - map((long)(readings[2]), (long)(white[2]), (long)(black[2]), 0, 255);
-    dbprintf("%ld", rgb[0]);
-    dbprintf("%ld", rgb[1]);
-    dbprintf("%ld", rgb[2]);
+    dbprintf("C");
+    analogWrite(46, 100);
+    delay(200);
+    analogWrite(46, 200);
+    delay(200);
+    analogWrite(46, 0);
   }
 
   // Shuts off colour sensor
@@ -596,8 +584,6 @@ void waitForHello()
     {
       if (hello.packetType == PACKET_TYPE_HELLO)
       {
-
-
         sendOK();
         exit = 1;
       }
@@ -654,16 +640,6 @@ void handlePacket(TPacket *packet)
 }
 
 void loop() {
-  // Uncomment the code below for Step 2 of Activity 3 in Week 8 Studio 2
-  // forward(0, 100);
-
-  // forwardDist = ((leftRevs + rightRevs) / 2) * WHEEL_CIRC;
-
-  // Serial.print("Forward distance ");
-  // Serial.println(forwardDist);
-
-  // Uncomment the code below for Week 9 Studio 2
-
   // put your main code here, to run repeatedly:
   TPacket recvPacket; // This holds commands from the Pi
 
